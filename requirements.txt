@@ -1,0 +1,2 @@
+wheel==0.37.1
+AWSIoTPythonSDK==1.4.9
