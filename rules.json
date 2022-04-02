@@ -1,0 +1,26 @@
+[
+    {
+        "name": "Rule-101",
+        "check_type": "avg_range",
+        "type": "HeartRate",
+        "avg_min": 86,
+        "avg_max": 88,
+        "trigger_count": 3
+    },
+    {
+        "name": "Rule-302",
+        "check_type": "avg_range",
+        "type": "SPO2",
+        "avg_min": 96,
+        "avg_max": 99,
+        "trigger_count": 3
+    },
+    {
+        "name": "Rule-201",
+        "check_type": "avg_range",
+        "type": "Temperature",
+        "avg_min": 35,
+        "avg_max": 37,
+        "trigger_count": 3
+    }
+]

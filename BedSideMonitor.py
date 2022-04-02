@@ -17,6 +17,7 @@
  */
  '''
 
+from curses import raw
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 from AWSIoTPythonSDK.exception.AWSIoTExceptions import publishTimeoutException
 from AWSIoTPythonSDK.core.protocol.internal.defaults import DEFAULT_OPERATION_TIMEOUT_SEC
@@ -32,6 +33,12 @@ import sched
 
 AllowedActions = ['both', 'publish', 'subscribe']
 
+from Database import DynamoDatabase
+db = DynamoDatabase()
+
+from RawDataModel import RawData
+rawdata = RawData(db, db.client)
+
 # Custom MQTT message callback
 def customCallback(client, userdata, message):
     print("Received a new message: ")
@@ -41,45 +48,28 @@ def customCallback(client, userdata, message):
     print("--------------\n\n")
 
 
-def publishBedSideMonitorData(loopCount):
-    message = {}
-    message['deviceid'] = 'BSM_G101'
+def publishBedSideMonitorData(loopCount, deviceid):
     try:
         if loopCount % PublishFreqTemperature == 0:
-            value = float(random.normalvariate(99, 1.5))
-            value = round(value, 1)
-            timestamp = str(datetime.datetime.now())
-            message['timestamp'] = timestamp
-            message['datatype'] = 'Temperature'
-            message['value'] = value
-            messageJson = json.dumps(message)
+            messageJson = rawdata.add_random_temperature(deviceid)
             myAWSIoTMQTTClient.publish(topic, messageJson, 1)
+            print("Publish Temp", messageJson)
 
         if loopCount % PublishFreqOxygen == 0:
-            value = int(random.normalvariate(90,3.0))
-            timestamp = str(datetime.datetime.now())
-            message['timestamp'] = timestamp
-            message['datatype'] = 'SPO2'
-            message['value'] = value
-            messageJson = json.dumps(message)
+            messageJson = rawdata.add_random_spo2(deviceid)
             myAWSIoTMQTTClient.publish(topic, messageJson, 1)
+            print("Publish Oxygen", messageJson)
 
         if loopCount % PublishFreqHeartRate == 0:
-            value = int(random.normalvariate(85,12))
-            timestamp = str(datetime.datetime.now())
-            message['timestamp'] = timestamp
-            message['datatype'] = 'HeartRate'
-            message['value'] = value
-            messageJson = json.dumps(message)
+            messageJson = rawdata.add_random_heartrate(deviceid)
             myAWSIoTMQTTClient.publish(topic, messageJson, 1)
+            print("Publish Heart Rate", messageJson)
 
         if args.mode == 'publish':
             print('Published topic %s: %s\n' % (topic, messageJson))
 
     except publishTimeoutException:
         print("Unstable connection detected. Wait for {} seconds. No data is pushed on IoT core from {} to {}.".format(DEFAULT_OPERATION_TIMEOUT_SEC, (datetime.datetime.now() - datetime.timedelta(seconds=DEFAULT_OPERATION_TIMEOUT_SEC)), datetime.datetime.now()))
-
-
 
 
 # Read in command-line parameters
@@ -91,7 +81,7 @@ parser.add_argument("-k", "--key", action="store", dest="privateKeyPath", help="
 parser.add_argument("-p", "--port", action="store", dest="port", type=int, help="Port number override")
 parser.add_argument("-w", "--websocket", action="store_true", dest="useWebsocket", default=False,
                     help="Use MQTT over WebSocket")
-parser.add_argument("-id", "--clientId", action="store", dest="clientId", default="basicPubSub",
+parser.add_argument("-id", "--clientId", action="store", dest="clientId", default="BedSideMonitor",
                     help="Targeted client id")
 parser.add_argument("-t", "--topic", action="store", dest="topic", default="sdk/test/Python", help="Targeted topic")
 parser.add_argument("-m", "--mode", action="store", dest="mode", default="both",
@@ -107,7 +97,7 @@ privateKeyPath = args.privateKeyPath
 port = args.port
 useWebsocket = args.useWebsocket
 clientId = args.clientId
-topic = args.topic
+topic = 'bsm/rawdata' # args.topic
 
 if args.mode not in AllowedActions:
     parser.error("Unknown --mode option %s. Must be one of %s" % (args.mode, str(AllowedActions)))
@@ -171,7 +161,8 @@ now = time.time()
 while True:
     try :
         if args.mode == 'both' or args.mode == 'publish':
-            scheduler.enterabs(now+loopCount, 1, publishBedSideMonitorData, (loopCount,))
+            scheduler.enterabs(now+loopCount, 1, publishBedSideMonitorData, (loopCount, 'BSM_G101'))
+            scheduler.enterabs(now+loopCount, 1, publishBedSideMonitorData, (loopCount, 'BSM_G201'))
             loopCount += 1
             scheduler.run()
     except KeyboardInterrupt:

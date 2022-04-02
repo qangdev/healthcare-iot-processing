@@ -1,0 +1,2 @@
+printf "\nRunning pub/sub application...\n"
+python BedSideMonitor.py -e a3tbp5wud3nllq-ats.iot.us-east-2.amazonaws.com -r ./credentials/thing1/root-CA.crt -c ./credentials/thing1/thing1.cert.pem -k ./credentials/thing1/thing1.private.key
